@@ -1,0 +1,216 @@
+{% load static %}
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <title>كاشف الأخبار الكاذبة باللغة العربية</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: linear-gradient(120deg, #e3e6f3 0%, #f8fafc 100%);
+            min-height: 100vh;
+            margin: 0;
+        }
+        .header {
+            width: 100vw;
+            background: linear-gradient(90deg, #007bff 60%, #0056b3 100%);
+            color: #fff;
+            padding: 32px 0 24px 0;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(0,123,255,0.08);
+            margin-bottom: 0;
+        }
+        .header-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 32px auto 0 auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 6px 32px rgba(0,0,0,0.10);
+            padding: 36px 28px 28px 28px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.1rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #007bff;
+            font-size: 1.1rem;
+            margin-bottom: 18px;
+        }
+        p {
+            color: #555;
+            text-align: center;
+        }
+        form {
+            margin-top: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        textarea {
+            direction: rtl;
+            text-align: right;
+            border: 1.5px solid #bfc9d9;
+            border-radius: 10px;
+            padding: 16px;
+            font-size: 17px;
+            background: #f4f6fb;
+            transition: border-color 0.2s;
+            resize: vertical;
+            min-height: 120px;
+        }
+        textarea:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        button {
+            padding: 13px 0;
+            font-size: 20px;
+            cursor: pointer;
+            background: linear-gradient(90deg, #007bff 60%, #0056b3 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.10);
+            transition: background 0.2s;
+            margin-top: 2px;
+        }
+        button:hover {
+            background: linear-gradient(90deg, #0056b3 60%, #007bff 100%);
+        }
+        .result-section {
+            margin-top: 32px;
+        }
+        .result-box {
+            border: 1px solid #e3e6f3;
+            border-radius: 12px;
+            padding: 20px;
+            background: #f8f8fc;
+            box-shadow: 0 2px 8px rgba(44,62,80,0.06);
+            white-space: pre-wrap;
+            text-align: left;
+            direction: ltr;
+            font-size: 16px;
+        }
+        .result-section h2 {
+            text-align: center;
+            color: #0056b3;
+            margin-bottom: 12px;
+        }
+        .classification-badge {
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .badge-fake {
+            background: #ffeaea;
+            color: #d90429;
+            border: 1px solid #d90429;
+        }
+        .badge-real {
+            background: #eaffea;
+            color: #218838;
+            border: 1px solid #218838;
+        }
+        .result-label {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .result-text {
+            background: #e3e6f3;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+        pre {
+            background: #f4f6fb;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 15px;
+        }
+        @media (max-width: 700px) {
+            .container { max-width: 98vw; padding: 10px; }
+            textarea { font-size: 15px; }
+            .header { padding: 18px 0 12px 0; font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-icon">📰</div>
+        <h1 style="margin-bottom:0;">كاشف الأخبار الكاذبة</h1>
+        <div class="subtitle">Arabic Fake News Detector</div>
+    </div>
+    <div class="container">
+        <p>أدخل النص الإخباري العربي أدناه ليتم ترجمته وتصنيفه على أنه <span style="color:green;font-weight:bold;">حقيقي (REAL)</span> أو <span style="color:red;font-weight:bold;">كاذب (FAKE)</span>.</p>
+        <form id="prediction-form">
+            {% csrf_token %}
+            <textarea id="arabic-text" rows="8" cols="80" placeholder="...ادخل النص العربي هنا" required></textarea>
+            <button type="submit">تصنيف الخبر <span style="font-size:18px;">🔎</span></button>
+        </form>
+        <div class="result-section">
+            <h2>النتائج (Results):</h2>
+            <div id="results" class="result-box">النتائج ستظهر هنا بصيغة JSON.</div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const text = document.getElementById('arabic-text').value;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.textContent = '...جاري التحميل والتصنيف';
+            fetch('{% url "predict_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ text: text })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    resultsDiv.innerHTML = `<span style="color: red;">خطأ (ERROR): ${data.error}</span>`;
+                } else {
+                    const badgeClass = data.prediction_text === 'FAKE' ? 'classification-badge badge-fake' : 'classification-badge badge-real';
+                    const badgeText = data.prediction_text === 'FAKE' ? 'كاذب (FAKE)' : 'حقيقي (REAL)';
+                    resultsDiv.innerHTML = `
+                        <div class="${badgeClass}">${badgeText}</div>
+                        <div class="result-label">التصنيف (Classification)</div>
+                        <hr>
+                        <div class="result-label">النص العربي الأصلي (Original Arabic):</div>
+                        <div class="result-text">${data.original_arabic}</div>
+                        <div class="result-label">النص الإنجليزي المُترجم (Translated English):</div>
+                        <div class="result-text">${data.translated_english}</div>
+                        <hr>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Network Error:', error);
+                resultsDiv.textContent = `خطأ في الاتصال بالخادم (Server Connection Error): ${error.message}`;
+            });
+        });
+    </script>
+</body>
+</html>
